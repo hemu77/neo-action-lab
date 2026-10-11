@@ -97,6 +97,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.mint(cookie)[0], 409)
         self.assertEqual(self.request("POST", "/api/step", {"scenario": {}}, cookie)[0], 400)
         self.assertEqual(self.request("POST", "/api/reset", {})[0], 401)
+        self.assertEqual(self.request("POST", "/api/confirm", {"nonce":"invalid","accept":True,"probe":{}}, cookie)[0], 400)
 
     def test_last_step_commit_is_admitted_once_via_http(self):
         cookie = self.bootstrap(); self.mint(cookie)
@@ -111,6 +112,37 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200); self.assertEqual(state["phase"], "complete")
         self.assertIsNone(state["pending"])
         self.assertEqual(self.request("POST", "/api/step", {"scenario": "normal"}, cookie)[0], 409)
+
+    def test_all_ui_probes_reach_the_expected_gate_rule(self):
+        from gate import SCENARIOS
+        cookie = self.bootstrap()
+        for scenario, label, _ in SCENARIOS:
+            if scenario == "normal": continue
+            with self.subTest(scenario=scenario):
+                self.request("POST", "/api/reset", {}, cookie)
+                self.mint(cookie)
+                status, _, state = self.request("POST", "/api/step", {"scenario":scenario}, cookie)
+                self.assertEqual(status, 200)
+                self.assertIn(label.rsplit(" · ", 1)[1], state["audit"][-1]["rules"])
+                self.assertEqual(state["audit"][-1]["verdict"], "CONFIRM" if scenario in {"caution", "ambiguous_choice"} else "DENY")
+
+    def test_noncommit_confirmation_and_postprompt_target_swap(self):
+        cookie = self.bootstrap(); self.mint(cookie)
+        _, _, state = self.request("POST", "/api/step", {"scenario":"caution"}, cookie)
+        with patch("gate.time.time", return_value=state["pending"]["ready_at"]):
+            status, _, state = self.request("POST", "/api/confirm", {"nonce":state["pending"]["nonce"],"accept":True}, cookie)
+        self.assertEqual(status, 200)
+        self.assertIsNone(state["reservation"])
+        self.assertEqual(state["audit"][-1]["rules"], ["G8"])
+        for _ in range(4): _, _, state = self.request("POST", "/api/step", {"scenario":"normal"}, cookie)
+        nonce = state["pending"]["nonce"]
+        with patch("gate.time.time", return_value=state["pending"]["ready_at"]):
+            status, _, state = self.request("POST", "/api/confirm", {"nonce":nonce,"accept":True,"probe":"target_swap"}, cookie)
+        self.assertEqual(status, 200)
+        self.assertIsNone(state["reservation"])
+        self.assertEqual(state["audit"][-1]["rules"], ["G4"])
+        self.assertEqual(state["audit"][-1]["verdict"], "DENY")
+        self.assertEqual(self.request("POST", "/api/confirm", {"nonce":nonce,"accept":True}, cookie)[0], 409)
 
 
 if __name__ == "__main__":

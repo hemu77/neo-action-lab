@@ -48,6 +48,7 @@ function renderControls() {
   $('scenario').disabled = busy || pending;
   $('export').disabled = busy || !state || !state.audit.length;
   $('cancel-confirm').disabled = busy;
+  $('swap-confirm').disabled = busy || !pending;
   updateConfirmClock();
 }
 
@@ -98,7 +99,9 @@ function renderAudit() {
     row.append(node('td', String(entry.seq)));
     const action = node('td', entry.action);
     action.append(node('span', `${entry.component} · ${entry.reason.replaceAll('_', ' ').toLowerCase()}`, 'action-detail'));
-    row.append(action, node('td', entry.taint), node('td', entry.rules.join(', '), 'rule-cell'), node('td', entry.verdict, 'verdict ' + entry.verdict.toLowerCase()));
+    const ruleCell = node('td', entry.rules.join(', '), 'rule-cell');
+    ruleCell.title = `Checked: ${(entry.checked_rules || entry.rules).join(', ')}`;
+    row.append(action, node('td', entry.taint), ruleCell, node('td', entry.verdict, 'verdict ' + entry.verdict.toLowerCase()));
     return row;
   });
   if (!rows.length) { const row = node('tr'); const cell = node('td', 'Every decision leaves evidence.', 'empty'); cell.colSpan = 5; row.append(cell); rows.push(row); }
@@ -165,6 +168,7 @@ $('step').addEventListener('click', () => mutate('/api/step', {scenario: 'normal
 $('probe').addEventListener('click', () => mutate('/api/step', {scenario: $('scenario').value}));
 $('scenario').addEventListener('change', scenarioChanged);
 $('accept-confirm').addEventListener('click', () => mutate('/api/confirm', {nonce: pendingNonce, accept: true}));
+$('swap-confirm').addEventListener('click', () => mutate('/api/confirm', {nonce: pendingNonce, accept: true, probe: 'target_swap'}));
 $('cancel-confirm').addEventListener('click', () => mutate('/api/confirm', {nonce: pendingNonce, accept: false}));
 $('confirm-dialog').addEventListener('cancel', (event) => { event.preventDefault(); mutate('/api/confirm', {nonce: pendingNonce, accept: false}); });
 $('confirm-dialog').addEventListener('keydown', (event) => { if (event.key === 'Enter') event.preventDefault(); });

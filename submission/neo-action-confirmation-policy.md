@@ -1,5 +1,7 @@
 # Norton Neo: confirmation policy
 
+*Author: Sai Hemanth Kilaru · AI Security Lead (candidate) · October 11, 2026*
+
 After all hard-denial checks pass, an action is Autonomous only when it is noncommitting or reversible, uses authorized user values or a deterministic IC-match witness for a nonsensitive page choice, stays inside approved disclosure bindings, has fresh safe reputation, and triggers no sensitive-data or special-surface rule; otherwise it requires CONFIRM.
 
 DENY always wins. The Gate checks G1–G12 before prompting and again immediately before execution. Approval cannot legalize a page-derived sensitive value, unauthorized origin, broader purpose, or unsupported action. A changed request needs a newly minted Intent Contract in trusted chrome, not a checkbox that overrides a refusal.
@@ -45,6 +47,6 @@ Discard carried-over input during a 500 ms arming delay. Enter does not accept; 
 
 ## Reviewer checklist and confirm-rate tuning
 
-Verify every example's G and T references, denial precedence, unchanged taint, accessible cancellation, exact prompt contents, expiry, replay rejection, and absence of secrets in logs. The prototype's ordinary web dialog demonstrates the lifecycle only; it is not a protected chrome surface.
+Verify every example's G and T references, denial precedence, unchanged taint, accessible cancellation, exact prompt contents, expiry, replay rejection, and absence of secrets in logs. The reference prototype's ordinary web dialog demonstrates the lifecycle only; it is not a protected chrome surface.
 
 Proposed target: one commitment prompt per successful ordinary reservation and fewer than 10% of reversible matched steps prompting. Track prompts per completed task and per eligible step, plus abandonment, comprehension, unsafe approvals, and attacker success. Report a separate cohort for unfamiliar or poorly rated sites. Review weekly. Tune adapters and equality witnesses first; never relax hard denials or required commitment/credential prompts to hit a rate. These targets are proposed, not measured results.

@@ -1,20 +1,32 @@
-# Norton Neo: intent-bound browser actions
+# Norton Neo: Injection-Resistant Action Pipeline — architecture and decisions
+
+*Author: Sai Hemanth Kilaru · AI Security Lead (candidate) · October 11, 2026*
 
 ## Summary
 
-The model may be fooled. The architecture limits what a fooled model can do. Page content can supply data. It can never choose the action.
-“Action” means the operation and authority; a quarantined Reader may still select a bounded candidate, with that residual risk explicit.
-A trusted Intent Contract, precompiled task program, and deterministic Action Gate separate interpretation from permission.
-Each side effect consumes an intent-bound authorization; destination, disclosed fields, audience, and confirmation evidence travel together.
-This is a proposed architecture, not a description of shipped Neo internals or a claim of measured security effectiveness.
+**Decision:** Neo will not rely on Grok to resist prompt injection. We assume the model can be fooled and design so that a fooled model cannot widen what the agent does.
+
+Three mechanisms carry that decision. First, an **Intent Contract**, signed from the user's own request in browser chrome before any page is read, fixes the origin, the allowed operations and effects, the data that may be disclosed, and the budget. Second, the Planner turns that contract into a **fixed task program** once; page text never re-plans it. Third, a deterministic **Action Gate** (no LLM) checks every click, fill, navigation and request against the contract and rules G1–G12, and returns ALLOW, CONFIRM, or DENY.
+
+Page content can supply typed data and pick among pre-approved candidates; it can never add an operation, a destination, a recipient, or a disclosure. The remaining risk, a wrong but permitted choice, is named and accepted (T13). This is a proposed architecture, not a description of shipped Neo internals or a measured security result.
 
 ## Goals / Non-goals
 
 Enable useful reservations and cart preparation while containing indirect prompt injection from pages, reviews, snippets, documents, and accessibility labels. Preserve the user's destination, requested effects, disclosure choices, and spending limits. Make every allow, prompt, and refusal explainable through stable rule IDs and reproducible traces.
 
-The first release supports reviewed vertical adapters. Arbitrary websites, autonomous account-security changes, permission grants, and general payment execution are outside that release. Prompt filtering is supplementary; detecting every malicious sentence is not an objective. Browser compromise, malicious operating systems, and an authorized merchant's downstream misuse require separate controls. Documents specify a production design; the accompanying local prototype demonstrates only controlled fixture behavior.
+The first release supports reviewed vertical adapters. Arbitrary websites, autonomous account-security changes, permission grants, and general payment execution are outside that release. Prompt filtering is supplementary; detecting every malicious sentence is not an objective. Browser compromise, malicious operating systems, and an authorized merchant's downstream misuse require separate controls. These documents specify a production design. A small reference prototype of the Gate and the worked scenario is public at https://github.com/hemu77/neo-action-lab; it exercises fixture decisions only and is not evidence of browser-level enforcement.
 
 Gen publicly announced Grok integration and an Agent Trust Hub role in governing agent behavior. The proposed Gate could support that direction, but its interfaces here are design proposals, not documented internal APIs. ([Gen partnership announcement](https://newsroom.gendigital.com/2026-04-28-Gen-and-xAI-Partner-to-Build-Trusted-AI-Assistants-for-Millions-of-Consumers))
+
+## Key decisions and rejected alternatives
+
+1. **Contain the model, don't trust it to detect attacks.** Rejected: an injection classifier or system-prompt hardening as the primary control. Model vendors state injection cannot be solved by the model alone, and a classifier that misses one phrasing grants full authority. Classifiers may still feed G8-style risk signals.
+2. **Plan once from the user's contract, not from the page.** Rejected: a single agent loop that reads the page and chooses the next action, because every page sentence would then be a potential instruction. The cost is less flexibility on unfamiliar sites; v1 compensates with reviewed adapters.
+3. **Deterministic Gate as the only authority.** Rejected: an LLM "judge" approving actions, since it is attackable by the same text. Rules are code with stable IDs so engineers can test each one.
+4. **Exact HTTPS origins, not registrable domains.** Rejected: eTLD+1 scope, which hands authority to every subdomain, including user-hosted ones.
+5. **Enforce egress at the network layer, default-deny.** Rejected: scanning DOM forms or payloads for the user's phone number, because page scripts can encode or split data.
+6. **Confirm commitments, not every step.** Rejected: confirming every click, which trains users to approve blindly (T15). Rejected: never confirming, which leaves money and identity to page influence.
+7. **Disposable per-task profile.** Rejected: running with the user's everyday cookies, autofill, and password manager, which would expose ambient authority to every page the agent visits.
 
 ## Trust boundaries & components
 
@@ -215,15 +227,11 @@ Provider processing is a separate disclosure boundary. Minimize and redact promp
 
 Which Neo browser hooks can enforce network policy before renderer access? Which signed adapter distribution and emergency revocation channel exist? What API and freshness terms are available for reputation? Which Grok contract and retention settings apply? Who approves accepted-risk changes?
 
-The user supplied the four references below. The linked challenge still requires sign-in, so the full competition brief and date-specific deadline remain unverified. Authenticate separately and reconcile those requirements before submission; no deadline is inferred from the plan's undated 3:30 PM note.
-
 ## References
 
 1. [Gen and xAI Partner to Build Trusted AI Assistants for Millions of Consumers](https://newsroom.gendigital.com/2026-04-28-Gen-and-xAI-Partner-to-Build-Trusted-AI-Assistants-for-Millions-of-Consumers) — April 28, 2026; product partnership context and publicly stated Agent Trust Hub direction.
-2. [Browsing Agent Prompt Injection: The Architecture Fix](https://appscale.blog/en/blog/browsing-agent-indirect-prompt-injection-egress-action-gating-2026) — supplied reference title; page heading is “Your Browsing Agent Just Read an Attacker's Web Page.” Only metadata and navigation were retrievable, so detailed technical claims are grounded in primary sources instead.
-3. [The Comprehensive Guide to Prompt Injection Attacks in 2026](https://www.sysdig.com/learn-cloud-native/prompt-injection) — August 7, 2026; supplied background reading, not evidence of this design's effectiveness.
-4. [Meet Norton Neo: The First Safe AI-Native Browser Now in Early Access](https://investor.gendigital.com/news/news-details/2025/Meet-Norton-Neo-The-First-Safe-AI-Native-Browser-Now-in-Early-Access/default.aspx) — product context; the title's safety language is the publisher's claim, not a security verdict for this proposal.
+2. [Browsing Agent Prompt Injection: The Architecture Fix](https://appscale.blog/en/blog/browsing-agent-indirect-prompt-injection-egress-action-gating-2026) — indirect injection, dual-LLM separation and egress control in browsing agents; technical claims here are grounded in the primary sources listed below.
+3. [The Comprehensive Guide to Prompt Injection Attacks in 2026](https://www.sysdig.com/learn-cloud-native/prompt-injection) — August 7, 2026; taxonomy of direct, indirect and stored injection used in the threat model.
+4. [Meet Norton Neo: The First Safe AI-Native Browser Now in Early Access](https://investor.gendigital.com/news/news-details/2025/Meet-Norton-Neo-The-First-Safe-AI-Native-Browser-Now-in-Early-Access/default.aspx) — product context for Neo's safety-first positioning, which this design extends from reading to acting.
 
 Primary technical foundations: [Defeating Prompt Injections by Design](https://arxiv.org/abs/2503.18813) motivates trusted control/data separation; [AgentDojo](https://arxiv.org/abs/2406.13352) and [WASP](https://arxiv.org/abs/2504.18575) inform evaluation design. Their results are not inherited by this architecture. CDP interfaces and vendor dependencies are linked where used.
-
-Supporting implementation sources are linked inline. All public-source checks were made on 2026-10-11.

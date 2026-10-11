@@ -1,0 +1,4 @@
+* text=auto eol=lf
+submission/*.md -text
+*.zip -text
+*.png -text

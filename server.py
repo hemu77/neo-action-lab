@@ -22,7 +22,7 @@ SESSION_TTL = 1800
 def audit(session, component, action, decision, taint="user"):
     session["sequence"] = session.get("sequence", 0) + 1
     session["audit"].append({"seq": session["sequence"], "component": component, "action": action,
-        "verdict": decision["verdict"], "rules": decision["rules"], "reason": decision["reason"], "taint": taint, "timestamp": int(time.time())})
+        "verdict": decision["verdict"], "rules": decision["rules"], "checked_rules": decision.get("checked_rules", decision["rules"]), "reason": decision["reason"], "taint": taint, "timestamp": int(time.time())})
     del session["audit"][:-200]
 
 
@@ -44,6 +44,7 @@ class Handler(BaseHTTPRequestHandler):
         with self.server.lock:
             now = time.time()
             for expired in [key for key, value in self.server.sessions.items() if now - value["last_access"] >= SESSION_TTL]:
+                self.server.gate.release(self.server.sessions[expired]["intent"])
                 del self.server.sessions[expired]
             if sid and sid in self.server.sessions:
                 self.server.sessions[sid]["last_access"] = now
@@ -101,12 +102,18 @@ class Handler(BaseHTTPRequestHandler):
         _, session, _ = self._session(False)
         if not session: return self._send(401,{"error":"session required"})
         with self.server.lock:
-            if self.path == "/api/reset": session.update({"intent":None,"phase":"idle","audit":[],"sequence":0}); return self._send(200, self._state(session))
+            if self.path == "/api/reset":
+                self.server.gate.release(session["intent"])
+                session.update({"intent":None,"phase":"idle","audit":[],"sequence":0})
+                return self._send(200, self._state(session))
             if self.path == "/api/intent":
                 if session["intent"]: return self._send(409, {"error":"reset the current task before approving a new intent"})
                 try: session["intent"] = self.server.gate.mint(payload)
                 except ValueError as err: return self._send(400, {"error":str(err)})
-                session["phase"] = "active"; decision={"verdict":"ALLOW","rules":["G12"],"reason":"INTENT_MINTED"}; audit(session,"minter","mint intent",decision); return self._send(200,self._state(session))
+                session["phase"] = "active"
+                audit(session, "minter", "mint intent", self.server.gate.trace_step(session["intent"], 1))
+                audit(session, "compiler", "compile fixed program", self.server.gate.trace_step(session["intent"], 2))
+                return self._send(200,self._state(session))
             intent = session.get("intent")
             if not intent: return self._send(409,{"error":"intent required"})
             if self.path == "/api/step":
@@ -117,20 +124,42 @@ class Handler(BaseHTTPRequestHandler):
                 if intent.get("pending"): intent["pending"] = None
                 session["phase"] = "active"
                 if scenario == "budget": intent["budget"]["steps"] = 0
-                action = self.server.gate.action(intent, scenario); decision=self.server.gate.decide(intent,scenario,action); audit(session,"gate",action["name"],decision,action["taint"])
+                if scenario == "normal":
+                    action = self.server.gate.action(intent, scenario)
+                    decision = self.server.gate.decide(intent, scenario, action)
+                else: action, decision = self.server.gate.probe(intent, scenario)
+                audit(session,"gate",action["name"],decision,action["taint"])
                 intent["budget"]["steps"] = max(0, intent["budget"]["steps"] - 1)
                 if decision["verdict"]=="ALLOW" and scenario=="normal":
                     intent["step_index"]+=1; intent["navigations"]+=int(intent["step_index"]==1); intent["budget"]["navigations"]-=int(intent["step_index"]==1); session["phase"]="active"
+                    if intent["step_index"] == 1:
+                        audit(session,"snapshot","enumerate supported slots",self.server.gate.trace_step(intent,4),"page")
+                        audit(session,"reader","parse enumerated handle",self.server.gate.trace_step(intent,5),"page")
                 elif decision["verdict"]=="CONFIRM": session["phase"]="awaiting_confirmation"
-                if "G10" in decision["rules"] or (intent["budget"]["steps"] == 0 and not intent["pending"]): session["phase"] = "stopped"
+                elif scenario == "normal": session["phase"]="stopped"
+                if (decision["verdict"] == "DENY" and "G10" in decision["rules"]) or (intent["budget"]["steps"] == 0 and not intent["pending"]): session["phase"] = "stopped"
                 return self._send(200,self._state(session))
             if self.path == "/api/confirm":
                 if type(payload.get("nonce")) is not str or type(payload.get("accept")) is not bool: return self._send(400,{"error":"invalid confirmation"})
+                if set(payload) - {"nonce", "accept", "probe"} or payload.get("probe") not in (None, "target_swap"): return self._send(400,{"error":"invalid confirmation probe"})
+                if payload.get("probe") == "target_swap":
+                    pending = intent["pending"]
+                    if not pending or pending["nonce"] != payload["nonce"] or not payload["accept"]: return self._send(409,{"error":"active grant required"})
+                    pending["action_record"]["current_target"]["label_hash"] = "b" * 64
+                    denied = self.server.gate.evaluate(intent,pending["action_record"],admitted=True)
+                    self.server.gate.consume(intent,payload["nonce"],True)
+                    audit(session,"executor","target swapped after prompt",denied)
+                    session["phase"]="stopped"
+                    return self._send(200,self._state(session))
                 result=self.server.gate.consume(intent,payload["nonce"],payload["accept"])
-                if not result["committed"] and result["reason"] not in {"CANCELLED"}:
+                if not result["committed"] and not result.get("confirmed") and result["reason"] not in {"CANCELLED"}:
                     if not intent["pending"]: session["phase"] = "active" if intent["budget"]["steps"] > 0 else "stopped"
                     return self._send(409,{"error":result["reason"]})
-                decision={"verdict":"ALLOW" if result["committed"] else "DENY","rules":["G6"],"reason":result.get("reason", "COMMITTED")}; audit(session,"confirmation","commit reservation",decision)
+                decision={"verdict":"ALLOW" if result["committed"] or result.get("confirmed") else "DENY","rules":result.get("rules",["G6"]),"reason":result.get("reason", "COMMITTED")}; audit(session,"confirmation","confirm action",decision)
+                if result["committed"]:
+                    # Reporting consumes no new action budget; the admitted commitment already paid it.
+                    report = self.server.gate.evaluate(intent,self.server.gate.action(intent,"verify"),admitted=True)
+                    audit(session,"verifier","qualified fixture report",report,"page")
                 session["phase"]="complete" if result["committed"] else ("active" if intent["budget"]["steps"] > 0 else "stopped"); return self._send(200,self._state(session))
         return self._send(404,{"error":"not found"})
 

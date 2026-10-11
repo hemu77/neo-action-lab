@@ -29,6 +29,8 @@ class GateTests(unittest.TestCase):
         self.assertIn("G10", self.gate.decide(self.intent, "normal")["rules"])
 
     def test_sensitive_data_requires_confirmation(self):
+        binding = dict(self.intent["disclosures"][0], field="credential", value="local:credential")
+        self.intent = self.gate.mint({"party":2,"time":"19:00","date":"2026-10-16"}, policy={"disclosures":[binding]})
         decision = self.gate.decide(self.intent, "sensitive_data")
         self.assertEqual((decision["verdict"], decision["rules"]), ("CONFIRM", ["G7"]))
         self.intent["budget"]["steps"] = 20
@@ -89,7 +91,7 @@ class GateTests(unittest.TestCase):
     def test_navigation_budget_and_noncommit_confirmation(self):
         self.intent["budget"]["navigations"] = 0
         self.assertIn("G10", self.gate.decide(self.intent, "normal")["rules"])
-        decision = self.gate.decide(self.intent, "sensitive_data")
+        decision = self.gate.decide(self.intent, "caution")
         self.intent["pending"]["ready_at"] = 0
         self.assertFalse(self.gate.consume(self.intent, decision["nonce"], True)["committed"])
         self.assertIsNone(self.intent["reservation"])

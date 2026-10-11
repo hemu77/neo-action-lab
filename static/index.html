@@ -20,7 +20,7 @@
   </aside>
   <main id="main">
     <header>
-      <div><h1>Intent stays in control.</h1><p class="subtitle">A reservation. Four attacks. One deterministic gate.</p></div>
+      <div><h1>Intent stays in control.</h1><p class="subtitle">Twelve rules. A fixed intent. Every decision visible.</p></div>
       <button id="export" class="outline">Export trace <span aria-hidden="true">↗</span></button>
     </header>
     <div id="error" role="alert" hidden></div>
@@ -53,7 +53,7 @@
         <section class="panel gate-panel">
           <h2>Action gate</h2>
           <label class="sr-only" for="scenario">Attack scenario</label><select id="scenario"><option value="normal">Normal reservation</option></select>
-          <div class="action-buttons"><button id="step" class="accent" disabled><span aria-hidden="true">▷</span> Run next step</button><button id="probe" class="outline" disabled>Probe attack</button></div>
+          <div class="action-buttons"><button id="step" class="accent" disabled><span aria-hidden="true">▷</span> Run next step</button><button id="probe" class="outline" disabled>Run probe</button></div>
           <div id="decision" class="decision ready" role="status" aria-live="polite"><span class="decision-symbol" aria-hidden="true">✓</span><div><h3 id="decision-title">Ready for intent</h3><p id="decision-reason">Approve the task to begin.</p><p id="decision-rule" class="rule-label"></p></div></div>
           <p id="scenario-description" class="small scenario-description">Advance the fixed reservation program.</p>
           <div id="receipt" class="receipt" hidden><span class="small">Fixture response</span><h3 id="receipt-id"></h3><p id="receipt-details"></p><p class="small">A simulated site report, not a real reservation.</p></div>
@@ -67,7 +67,7 @@
     <footer>Local simulation · No Grok, CDP or live reputation service connected</footer>
   </main>
   <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-explainer">
-    <form method="dialog" id="confirm-form"><span class="dialog-symbol" aria-hidden="true">↗</span><h2 id="confirm-title">Confirm this action</h2><p id="confirm-explainer">Review the exact fixture action and destination before proceeding.</p><dl><dt>Action</dt><dd id="confirm-action"></dd><dt>Destination</dt><dd><code id="confirm-origin"></code></dd><dt>Data in this fixture</dt><dd><pre id="confirm-data"></pre></dd></dl><p class="small">Demo confirmation surface. Production requires trusted browser chrome. Synthetic contact data only.</p><p id="confirm-timer" role="status" class="small"></p><div class="dialog-actions"><button type="button" id="cancel-confirm" class="outline">Cancel</button><button type="button" id="accept-confirm" class="primary" disabled>Confirm action</button></div></form>
+    <form method="dialog" id="confirm-form"><span class="dialog-symbol" aria-hidden="true">↗</span><h2 id="confirm-title">Confirm this action</h2><p id="confirm-explainer">Review the exact fixture action and destination before proceeding.</p><dl><dt>Action</dt><dd id="confirm-action"></dd><dt>Destination</dt><dd><code id="confirm-origin"></code></dd><dt>Data in this fixture</dt><dd><pre id="confirm-data"></pre></dd></dl><p class="small">Demo confirmation surface. Production requires trusted browser chrome. Synthetic contact data only.</p><p id="confirm-timer" role="status" class="small"></p><div class="dialog-actions"><button type="button" id="cancel-confirm" class="outline">Cancel</button><button type="button" id="accept-confirm" class="primary" disabled>Confirm action</button></div><button type="button" id="swap-confirm" class="outline">Probe target swap before execution · G4</button></form>
   </dialog>
 </body>
 </html>

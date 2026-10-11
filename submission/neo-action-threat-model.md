@@ -1,5 +1,7 @@
 # Norton Neo: action threat model
 
+*Author: Sai Hemanth Kilaru · AI Security Lead (candidate) · October 11, 2026*
+
 This model assesses the proposed architecture, not a deployed browser. The attacker controls page prose, labels, embedded frames, scripts, and timing, and may operate or compromise an allowed site. The attacker cannot change browser chrome, the local signing key, the deterministic Gate, or a reviewed adapter without a separate compromise. Protected assets include private user values, credentials, task scope, account state, and the user's attention.
 
 The privileged decider is the deterministic Gate. The Planner is a compiler input, not a policy authority. Only the Reader sees arbitrary page text. A page-selected candidate may influence a permitted choice, but cannot add operations or authority. Taint follows derivation; sensitive destinations and values must originate in the Intent Contract. Scope is an exact HTTPS origin, with no automatic subdomain authorization.
@@ -37,4 +39,4 @@ The privileged decider is the deterministic Gate. The Planner is a compiler inpu
 
 The red-team lead owns fixtures and adversarial variations; the browser-security engineer owns mediation coverage; the Gate engineer owns precedence and replay tests. Every case is paired with a legitimate control task. At minimum, replay the architecture trace and test both plaintext and transformed egress, same-origin public sinks, fourth redirects, expired contracts, stale confirmations, hidden fields, unsupported roots, malformed Reader records, and page-induced structured errors.
 
-The working prototype exercises deterministic fixture decisions. It does not provide evidence that real browser transports, Grok sessions, Safe Web integration, or chrome confirmation meet these assumptions. Reclassify Stopped entries if instrumentation or adapter coverage is missing. Report attempted attacks, observed unauthorized effects, and clean-task success separately; aggregate accuracy can hide a severe boundary failure.
+The public reference prototype (https://github.com/hemu77/neo-action-lab) exercises deterministic fixture decisions. It does not provide evidence that real browser transports, Grok sessions, Safe Web integration, or chrome confirmation meet these assumptions. Reclassify Stopped entries if instrumentation or adapter coverage is missing. Report attempted attacks, observed unauthorized effects, and clean-task success separately; aggregate accuracy can hide a severe boundary failure.
